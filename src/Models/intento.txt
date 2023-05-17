@@ -1,0 +1,41 @@
+<?php
+class Db{
+    private $host = 'localhost';
+    private $dbname = 'plataformajuegos';
+    private $user = 'root';
+    private $pass = '';
+
+
+    public function __construct(){
+        $stringConexion = "mysql:hos=".$this->host.";dbname=".$this->dbname.";charset=utf8";
+        try {
+            $this->conect = new PDO($stringConexion, $this->user,$this->pass);
+            $pdo = new PDO("mysql:host=$host;dbname=$dbname", $user, $pass);
+            $this->conect->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            echo "Conexión exitosa";
+        } catch(PDOException $e) {
+            $this->conect = 'Error al conectarse a la base de datos: ';
+            echo "ERROR: " . $e->getMessage();
+        }
+    }
+}
+$conect = new Db();
+?>
+
+
+<?php
+// Información de la base de datos
+$host = 'localhost';
+$dbname = 'plataformajuegos';
+$user = 'root';
+$pass = '';
+
+// Intentamos conectarnos a la base de datos utilizando PDO
+try {
+    $pdo = new PDO("mysql:host=$host;dbname=$dbname", $user, $pass);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    echo "Conexión exitosa";
+} catch(PDOException $e) {
+    echo "Error al conectarse a la base de datos: " . $e->getMessage();
+}
+?>
