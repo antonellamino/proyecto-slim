@@ -43,6 +43,7 @@ $app->post('/genero', function(Request $request, Response $response){ //post por
 
 
 //B) ACTUALIZAR INFORMACION DE UN GENERO
+//algo estoy haciendo mal con el metodo
 $app->put('/genero/{id}', function(Request $request, Response $response){ //funciona si mando el id por url, no me actualiza el nombre, el form data solo lo parsea con post, para put usar raw json o x
     global $db;
     $campos = $request->getParsedBody();
@@ -75,9 +76,9 @@ $app->put('/genero/{id}', function(Request $request, Response $response){ //func
 
 
 //C) ELIMINAR UN GENERO
-//ok
+//no me anda, no me acuerdo porque era el error
 //faltan chequeos, preguntar
-$app->delete('/genero/{id}', function(Request $request, Response $response){
+$app->delete('/generos/{id}', function(Request $request, Response $response){
     global $db;
     
     try{
@@ -106,7 +107,7 @@ $app->delete('/genero/{id}', function(Request $request, Response $response){
 
 //D) OBTENER TODOS LOS GENEROS
 //OK
-$app->get('/genero', function(Request $request, Response $response){
+$app->get('/generos', function(Request $request, Response $response){
     global $db;
     $sql = "SELECT * FROM generos";
     try{
@@ -130,7 +131,7 @@ $app->get('/genero', function(Request $request, Response $response){
 //E) CREAR UNA NUEVA PLATAFORMA
 //ok
 //faltan chequeos
-$app->post('/plataforma', function(Request $request, Response $response){
+$app->post('/plataformas', function(Request $request, Response $response){
     global $db;
     $nuevaPlataforma = $request->getParsedBody();
     try{
@@ -148,7 +149,8 @@ $app->post('/plataforma', function(Request $request, Response $response){
 
 //F) ACTUALIZAR INFORMACION DE UNA PLATAFORMA
 //ok, para probar usar lo mismo que en genero
-$app->put('/plataforma/{id}', function(Request $request, Response $response){
+//si no se envia nada, ver
+$app->put('/plataformas/{id}', function(Request $request, Response $response){
     global $db;
     $campos = $request->getParsedBody();
 
@@ -179,9 +181,9 @@ $app->put('/plataforma/{id}', function(Request $request, Response $response){
 
 
 //G) ELIMINAR UNA PLATAFORMA
-//OK
+//no anda
 //VER CHEQUEOS AS USUAL
-$app->delete('/plataforma/{id}', function(Request $request, Response $response){
+$app->delete('/plataformas/{id}', function(Request $request, Response $response){
     global $db;
     
     try{
@@ -202,7 +204,7 @@ $app->delete('/plataforma/{id}', function(Request $request, Response $response){
             return $response->withStatus(400);
         }
     } catch (\PDOException $err){
-        $response->getBody()-write($err->getMessage());
+        $response->getBody()->write($err->getMessage());
         return $response->withStatus(400);
     }
 });
@@ -210,7 +212,7 @@ $app->delete('/plataforma/{id}', function(Request $request, Response $response){
 
 //H) OBTENER TODAS LAS PLATAFORMAS ASUMO
 //ok
-$app->get('/plataforma', function(Request $request, Response $response){
+$app->get('/plataformas', function(Request $request, Response $response){
     global $db;
     $sql = "SELECT * FROM plataformas";
     try{
@@ -232,63 +234,67 @@ $app->get('/plataforma', function(Request $request, Response $response){
 
 
 //I) CREAR UN NUEVO JUEGO
+//agregar los chequeos pertinentes como con js y php
 $app->post('/juegos', function(Request$request, Response $response){
     global $db;
     $campos = $request->getParsedBody();
 
     try{
-        $cons = $db->prepare("INSERT INTO juegos (nombre, imagen, descripcion, url, genero, plataforma) VALUES (?,?,?,?,?,?)");
+        $cons = $db->prepare("INSERT INTO juegos (nombre, imagen, tipo_imagen, descripcion, url, id_genero, id_plataforma) VALUES (?,?,?,?,?,?,?)");
         $cons->bindParam(1, $campos['nombre']);
-        $cons->bindParam(2, $campos['imagen']);
-        $cons->bindParam(3, $campos['descripcion']);
-        $cons->bindParam(4, $campos['url']);
-        $cons->bindParam(5, $campos['genero']);
-        $cons->bindParam(6, $campos['plataforma']);
+        $cons->bindParam(2, $campos['imagen']); //viene como texto en base 64
+        $cons->bindParam(3, $campos['tipo_imagen']);
+        $cons->bindParam(4, $campos['descripcion']);
+        $cons->bindParam(5, $campos['url']);
+        $cons->bindParam(6, $campos['id_genero']);//id
+        $cons->bindParam(7, $campos['id_plataforma']);//id
         $cons->execute();
 
         $response->getBody()->write(json_encode('Se agrego un juego'));
         return $response->withStatus(200);
     }catch (\PDOException $e){
         $response->getBody()->write($e->getMessage());
-        return $response->withStatus(200);
+        return $response->withStatus(400);
     }
 });
 
 
 //J) ACTUALIZAR UN JUEGO
-//lo mismo que en agregar juego, no se como hacer con algunos campos
-// $appp->put('/juegos/{id}', function(Request$request, Response $response){
-//     global $db;
-//     $campos = $request->getParsedBody();
+//si se manda otra cosa q no se aun itn que pasa, o no importa, el id en la bd es de tipo int
+$app->put('/juegos/{id}', function(Request$request, Response $response){
+    global $db;
+    $campos = $request->getParsedBody();
 
-//     try{
-//         $id = $request->getAttribute('id');
-//         $id = $request->getAttribute('id'); //cuando el parametro viene en la url
-//         $cons = $db->prepare("SELECT * FROM juegos WHERE id=?"); 
-//         $cons->bindParam(1, $id);
-//         $cons->execute();
+    try{
+        $id = $request->getAttribute('id');
+        $id = $request->getAttribute('id'); //cuando el parametro viene en la url
+        $cons = $db->prepare("SELECT * FROM juegos WHERE id=?"); 
+        $cons->bindParam(1, $id);
+        $cons->execute();
 
-//         if($cons->rowCount() != 0){
-//             $cons = $db->prepare("UPDATE juegos SET  nombre=? WHERE id=?");
-//             $cons->bindParam(1, $campos['nombre']);
-//             $cons->bindParam(2, $id);
-//             $cons->execute();
+        if($cons->rowCount() != 0){
+            $cons = $db->prepare("UPDATE juegos SET  nombre=? WHERE id=?");
+            $cons->bindParam(1, $campos['nombre']);
+            $cons->bindParam(2, $id);
+            $cons->execute();
 
-//             $response->getBody()->write((json_encode('Se actualizo una plataforma')));
-//             return $response->withStatus(200); 
-//         } else {
-//             $response->getBody()->write(json_encode('No se encontro una plataforma con el id: ' . $id));
-//             return $response->withStatus(400); 
-//         }
+            $response->getBody()->write((json_encode('Se actualizo un juego')));
+            return $response->withStatus(200); 
+        } else {
+            $response->getBody()->write(json_encode('No se encontro un juego con el id: ' . $id));
+            return $response->withStatus(400); 
+        }
 
-//     } catch (\PDOException $err){
-//         $response->getBody()->write($err->getMessage());
-//         return $response->withStatus(400); 
-//     }
-// });
+    } catch (\PDOException $err){
+        $response->getBody()->write($err->getMessage());
+        return $response->withStatus(400); 
+    }
+});
 
 
 //K) ELIMINAR UN JUEGO
+//ok
+//preg si el mje de que no hay juego esta bien
 $app->delete('/juegos/{id}', function(Request $request, Response $response){
     global $db;
     
@@ -318,10 +324,11 @@ $app->delete('/juegos/{id}', function(Request $request, Response $response){
 
 
 //L) OBTENER TODOS LOS JUEGOS
+//OK
 $app->get('/juegos', function (Request $request, Response $response, $args){
     $sql = "SELECT * FROM juegos";
     try{
-        $db = new Db();
+        $db = new Db();//poner global
         $db = $db->connect();
         $resul = $db->query($sql);
 
@@ -336,16 +343,17 @@ $app->get('/juegos', function (Request $request, Response $response, $args){
         return $response;
     } catch (\PDOException $e){
         $response->getBody()->write($e->getMessage());
-        return $response->withStatus(200);
+        return $response->withStatus(400);
     }
 });
 
 
 $app->run();
 
-//CONSULTA: COMO ES MEJOR PONERLE A LAS URL API
+//CONSULTA: COMO ES MEJOR PONERLE A LAS URL API ok
 //CHEQUEOS QUE HAY QUE HACER
-//HAY QUE DEVOLVER LOS MENSAJES PERSONALIZADOS? O ALCANZA CON EL RESPONSE
-//uso el catch? o esta mal? si no dejar asi
+//HAY QUE DEVOLVER LOS MENSAJES PERSONALIZADOS? O ALCANZA CON EL RESPONSE ok
+//uso el catch? o esta mal? si no dejar asi ok
+//no se puede eliminar un genero q esta en uso
 ?>
 
