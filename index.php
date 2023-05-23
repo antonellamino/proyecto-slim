@@ -24,7 +24,9 @@ $app->get('/', function (Request $request, Response $response, $args) {
 
 
 //A) CREAR UN NUEVO GENERO
-$app->post('/genero', function(Request $request, Response $response){ //post porque es para crear //agrega aun cuando hay error
+//probar en el body, x-www con el nombre a agregar
+//preg si hay q chequear si ya existe
+$app->post('/generos', function(Request $request, Response $response){ //post porque es para crear //agrega aun cuando hay error
     // $generoInsertar = $args["genero"]; es una forma de hacerlo poniengo $args = [] como parametro de la funcion cuando viene por 
     global $db;
     $nuevoGenero = $request->getParsedBody(); //QUE CHEQUEOS TENGO QUE AGREGAR
@@ -42,9 +44,11 @@ $app->post('/genero', function(Request $request, Response $response){ //post por
 });
 
 
+
 //B) ACTUALIZAR INFORMACION DE UN GENERO
-//algo estoy haciendo mal con el metodo
-$app->put('/genero/{id}', function(Request $request, Response $response){ //funciona si mando el id por url, no me actualiza el nombre, el form data solo lo parsea con post, para put usar raw json o x
+//anda, prueba con x-www el con el nombre nuevo
+//si no se pone parametro tira error 500, hago algo mas con eso?
+$app->put('/generos/{id}', function(Request $request, Response $response){ //funciona si mando el id por url, no me actualiza el nombre, el form data solo lo parsea con post, para put usar raw json o x
     global $db;
     $campos = $request->getParsedBody();
 
@@ -75,34 +79,45 @@ $app->put('/genero/{id}', function(Request $request, Response $response){ //func
 
 
 
-//C) ELIMINAR UN GENERO
-//no me anda, no me acuerdo porque era el error
-//faltan chequeos, preguntar
+//C) ELIMINAR UN GENERO //VER//
+//ok
+//que pasa si no se envia parametro
 $app->delete('/generos/{id}', function(Request $request, Response $response){
     global $db;
     
     try{
         $id = $request->getAttribute('id');
-        $cons = $db->prepare("SELECT * FROM generos WHERE id=?");
-        $cons->bindParam(1, $id);
-        $cons->execute();
+        //traigo los juegos
+        $juegos = $db->prepare("SELECT * FROM juegos WHERE id_genero=?");
+        $juegos->bindParam(1, $id);
+        $juegos->execute();
 
-        if($cons->rowCount() != 0){
-            $cons = $db->prepare("DELETE FROM generos WHERE id=?");
-            $cons->bindParam(1, $id);
-            $cons->execute();
+        //traigo los generos para chequear que exista y eliminar
+        $gen = $db->prepare("SELECT * FROM generos WHERE id=?");
+        $gen->bindParam(1, $id);
+        $gen->execute();
 
-            $response->getBody()->write(json_encode('Se elimino un genero'));
-            return $response->withStatus(200);
-        } else {
+        //si el id esta siendo usado, no se puede eliminar
+        if ($juegos->rowCount() > 0){
+            $response->getBody()->write(json_encode('Genero en uso, no se puede eliminar'));
+            return $response->withStatus(400);
+            //si el id no existe, tampoco
+        } else if ($gen->rowCount() == 0){
             $response->getBody()->write(json_encode('No se encontro el genero con id: ' . $id));
             return $response->withStatus(400);
+        } else { //si existe y no esta en uso se elimina
+            $gen = $db->prepare("DELETE FROM generos WHERE id=?");
+            $gen->bindParam(1, $id);
+            $gen->execute();
+            $response->getBody()->write(json_encode('Se elimino el genero con id:  ' . $id));
+            return $response->withStatus(200);
         }
     } catch (\PDOException $err){
-        $response->getBody()-write($err->getMessage());
+        $response->getBody()->write($err->getMessage());
         return $response->withStatus(400);
     }
 });
+
 
 
 //D) OBTENER TODOS LOS GENEROS
@@ -128,9 +143,10 @@ $app->get('/generos', function(Request $request, Response $response){
 });
 
 
-//E) CREAR UNA NUEVA PLATAFORMA
-//ok
-//faltan chequeos
+//E) CREAR UNA NUEVA PLATAFORMA //ver//
+//ok, probar sin barra al final si no da error, por x-www el nombre a crear
+//faltan chequeos, q pasa si ya existe el nombre
+//no esta especificado
 $app->post('/plataformas', function(Request $request, Response $response){
     global $db;
     $nuevaPlataforma = $request->getParsedBody();
@@ -147,9 +163,10 @@ $app->post('/plataformas', function(Request $request, Response $response){
 });
 
 
+
 //F) ACTUALIZAR INFORMACION DE UNA PLATAFORMA
-//ok, para probar usar lo mismo que en genero
-//si no se envia nada, ver
+//ok, para probar, enviar por x-www el nombre a actualizar
+//si no se envia nada, error 500, esta ok?
 $app->put('/plataformas/{id}', function(Request $request, Response $response){
     global $db;
     $campos = $request->getParsedBody();
@@ -180,28 +197,38 @@ $app->put('/plataformas/{id}', function(Request $request, Response $response){
 });
 
 
-//G) ELIMINAR UNA PLATAFORMA
-//no anda
-//VER CHEQUEOS AS USUAL
+//G) ELIMINAR UNA PLATAFORMA    //VER//
+//ok
+//ver que pasa cuando no se envia una plat
 $app->delete('/plataformas/{id}', function(Request $request, Response $response){
     global $db;
     
     try{
         $id = $request->getAttribute('id');
-        $cons = $db->prepare("SELECT * FROM plataformas WHERE id=?");
-        $cons->bindParam(1, $id);
-        $cons->execute();
+        //traigo los juegos
+        $juegos = $db->prepare("SELECT * FROM juegos WHERE id_plataforma=?");
+        $juegos->bindParam(1, $id);
+        $juegos->execute();
 
-        if($cons->rowCount() != 0){
-            $cons = $db->prepare("DELETE FROM plataformas WHERE id=?");
-            $cons->bindParam(1, $id);
-            $cons->execute();
+        //traigo las plataformas para chequear que exista y eliminar
+        $plat = $db->prepare("SELECT * FROM plataformas WHERE id=?");
+        $plat->bindParam(1, $id);
+        $plat->execute();
 
-            $response->getBody()->write(json_encode('Se elimino una plataforma'));
-            return $response->withStatus(200);
-        } else {
+        //si el id esta siendo usado, no se puede eliminar
+        if ($juegos->rowCount() > 0){
+            $response->getBody()->write(json_encode('Plataforma en uso, no se puede eliminar'));
+            return $response->withStatus(400);
+            //si el id no existe, tampoco
+        } else if ($plat->rowCount() == 0){
             $response->getBody()->write(json_encode('No se encontro la plataforma con id: ' . $id));
             return $response->withStatus(400);
+        } else { //si existe y no esta en uso se elimina
+            $plat = $db->prepare("DELETE FROM plataformas WHERE id=?");
+            $plat->bindParam(1, $id);
+            $plat->execute();
+            $response->getBody()->write(json_encode('Se elimino la plataforma con id:' . $id));
+            return $response->withStatus(200);
         }
     } catch (\PDOException $err){
         $response->getBody()->write($err->getMessage());
@@ -210,8 +237,9 @@ $app->delete('/plataformas/{id}', function(Request $request, Response $response)
 });
 
 
+
 //H) OBTENER TODAS LAS PLATAFORMAS ASUMO
-//ok
+//OK
 $app->get('/plataformas', function(Request $request, Response $response){
     global $db;
     $sql = "SELECT * FROM plataformas";
@@ -228,45 +256,125 @@ $app->get('/plataformas', function(Request $request, Response $response){
         return $response;
     } catch (\PDOException $e){
         $response->getBody()->write($e->getMessage());
-        return $response->withStatus(200);
+        return $response->withStatus(400);
     }
 });
 
 
-//I) CREAR UN NUEVO JUEGO
+//I) CREAR UN NUEVO JUEGO   //ver//
 //agregar los chequeos pertinentes como con js y php
+//si mando todos los datos, todo bien
+//probar con form-data, mandar los key y value y que coincidan los nombres de campos
 $app->post('/juegos', function(Request$request, Response $response){
     global $db;
     $campos = $request->getParsedBody();
 
     try{
-        $cons = $db->prepare("INSERT INTO juegos (nombre, imagen, tipo_imagen, descripcion, url, id_genero, id_plataforma) VALUES (?,?,?,?,?,?,?)");
-        $cons->bindParam(1, $campos['nombre']);
-        $cons->bindParam(2, $campos['imagen']); //viene como texto en base 64
-        $cons->bindParam(3, $campos['tipo_imagen']);
-        $cons->bindParam(4, $campos['descripcion']);
-        $cons->bindParam(5, $campos['url']);
-        $cons->bindParam(6, $campos['id_genero']);//id
-        $cons->bindParam(7, $campos['id_plataforma']);//id
-        $cons->execute();
+        //chequeo nombre
+        $respuesta = array();
+        $respuesta["exito"] = true;
+        $respuesta["errores"] = array();
 
-        $response->getBody()->write(json_encode('Se agrego un juego'));
-        return $response->withStatus(200);
-    }catch (\PDOException $e){
-        $response->getBody()->write($e->getMessage());
+        if(!isset($campos['nombre']) or $campos['nombre'] == ""){
+            $respuesta["exito"] = false;
+            array_push($respuesta["errores"], "Se debe introducir un nombre");
+        }
+
+        //chequeo imagen, preguntar si asumo q viene en base 64
+        if(!isset($campos['imagen']) or $campos['imagen'] == ""){
+            array_push($respuesta["errores"], "Se debe introducir una imagen");
+            $respuesta["exito"] = false;
+        }
+        //chequeo tipo de img
+        if(!isset($campos['tipo_imagen']) or !(($campos['tipo_imagen'] == 'jpeg') or ($campos['tipo_imagen'] == 'jpg') or ($campos['tipo_imagen'] == 'png'))){
+            $respuesta["exito"] = false;
+            array_push($respuesta["errores"], "El tipo de imagen debe estar seteada y ser de tipo jpeg, jpg o png");
+            
+        }
+
+        //chequeo descripcion
+        if(!isset($campos['descripcion']) or strlen($campos['descripcion']) > 255){
+            $respuesta["exito"] = false;
+            array_push($respuesta["errores"], "La descripcion debe estar seteada y no puede superar los 255 caracteres");
+        }
+
+        //chequeo url
+        if(!isset($campos['url']) or strlen($campos['url']) > 80){
+            $respuesta["exito"] = false;
+            array_push($respuesta["errores"], "La url no puede superar los 80 caracteres");
+        }
+
+        //chequeo del genero
+        //tiene que ser un genero que exista
+        if (!isset($campos['id_genero']) or $campos['id_genero'] == ""){
+            $respuesta["exito"] = false;
+            array_push($respuesta["errores"], "Se debe introducir el id de un genero");
+            
+        } else {
+            $id = $campos['id_genero'];
+            $gen = $db->prepare("SELECT * FROM generos where id=?");
+            $gen->bindParam(1, $id);
+            $gen->execute();
+
+            if($gen->rowCount() == 0){
+                array_push($respuesta["errores"], "El id ingresado no pertenece a un genero existente en la bd");
+                $respuesta["exito"] = false;
+            }
+        }
+
+        //chequeo de la plataforma
+        if(!isset($campos['id_plataforma']) or $campos['id_plataforma'] == ""){
+            $respuesta["exito"] = false;
+            array_push($respuesta["errores"], "Se debe introducir el id de una plataforma");
+            
+        } else {
+            $id = $campos['id_plataforma'];
+            $gen = $db->prepare("SELECT * FROM generos where id=?");
+            $gen->bindParam(1, $id);
+            $gen->execute();
+
+            if($gen->rowCount() == 0){
+                array_push($respuesta["errores"], "El id ingresado no pertenece a una plataforma existente en la bd");
+                $respuesta["exito"] = false;
+            }
+        }
+
+        if ($respuesta["exito"]){
+            $cons = $db->prepare("INSERT INTO juegos (nombre, imagen, tipo_imagen, descripcion, url, id_genero, id_plataforma) VALUES (?,?,?,?,?,?,?)");
+            $cons->bindParam(1, $campos['nombre']);
+            $cons->bindParam(2, $campos['imagen']); //viene como texto en base 64
+            $cons->bindParam(3, $campos['tipo_imagen']); //agrego el tipo de imagen, asumo que lo envia el usuario?
+            $cons->bindParam(4, $campos['descripcion']);
+            $cons->bindParam(5, $campos['url']);
+            $cons->bindParam(6, $campos['id_genero']);//id
+            $cons->bindParam(7, $campos['id_plataforma']);//id
+            $cons->execute();
+
+            $json = array('mensaje' => 'Se agrego un juego', 'exito' => true);
+            $response->getBody()->write(json_encode($json));
+            return $response->withStatus(200);
+        } else {
+            $json = array('mensaje' => 'No se pudo agregar el juego.', "errores" => $respuesta["errores"], 'exito' => false);
+            $response->getBody()->write((json_encode($json)));
+            return $response->withStatus(400);
+        }
+    } catch (\PDOException $e){
+        $respuesta= array('mensaje' => $e->getMessage(), 'exito' => false);
+        $response->getBody()->write(json_encode($respuesta));
         return $response->withStatus(400);
     }
 });
 
 
 //J) ACTUALIZAR UN JUEGO
+//OK
 //si se manda otra cosa q no se aun itn que pasa, o no importa, el id en la bd es de tipo int
+//se manda con x-www-form-urlencoded
 $app->put('/juegos/{id}', function(Request$request, Response $response){
     global $db;
     $campos = $request->getParsedBody();
 
     try{
-        $id = $request->getAttribute('id');
         $id = $request->getAttribute('id'); //cuando el parametro viene en la url
         $cons = $db->prepare("SELECT * FROM juegos WHERE id=?"); 
         $cons->bindParam(1, $id);
@@ -281,7 +389,7 @@ $app->put('/juegos/{id}', function(Request$request, Response $response){
             $response->getBody()->write((json_encode('Se actualizo un juego')));
             return $response->withStatus(200); 
         } else {
-            $response->getBody()->write(json_encode('No se encontro un juego con el id: ' . $id));
+            $response->getBody()->write(json_encode('No hay un juego con el id: ' . $id));
             return $response->withStatus(400); 
         }
 
@@ -293,26 +401,24 @@ $app->put('/juegos/{id}', function(Request$request, Response $response){
 
 
 //K) ELIMINAR UN JUEGO
-//ok
+//ok, sin param, id en url
 //preg si el mje de que no hay juego esta bien
 $app->delete('/juegos/{id}', function(Request $request, Response $response){
     global $db;
     
     try{
         $id = $request->getAttribute('id');
-        $cons = $db->prepare("SELECT * FROM juegos WHERE id=?");
-        $cons->bindParam(1, $id);
-        $cons->execute();
-
-        if($cons->rowCount() != 0){
+        $juegos = $db->prepare("SELECT * FROM juegos WHERE id=?");
+        $juegos->bindParam(1, $id);
+        $juegos->execute();
+        if($juegos->rowCount() > 0){ //si el juego con el id enviado existe
             $cons = $db->prepare("DELETE FROM juegos WHERE id=?");
             $cons->bindParam(1, $id);
             $cons->execute();
-
-            $response->getBody()->write(json_encode('Se elimino un juego'));
+            $response->getBody()->write(json_encode('Se elimino el juego con id: ' . $id));
             return $response->withStatus(200);
         } else {
-            $response->getBody()->write(json_encode('No se encontro el juego con id: ' . $id));
+            $response->getBody()->write(json_encode('No hay un juego con id: ' . $id));
             return $response->withStatus(400);
         }
     } catch (\PDOException $err){
@@ -323,22 +429,21 @@ $app->delete('/juegos/{id}', function(Request $request, Response $response){
 
 
 
+
 //L) OBTENER TODOS LOS JUEGOS
-//OK
+//OK, sin parametros ni body
 $app->get('/juegos', function (Request $request, Response $response, $args){
+    global $db;
     $sql = "SELECT * FROM juegos";
     try{
-        $db = new Db();//poner global
-        $db = $db->connect();
         $resul = $db->query($sql);
-
         if($resul->rowCount() > 0){
-            $juegos = $resul->fetchAll(\PDO::FETCH_OBJ);
+            $juegos = $resul->fetchAll(\PDO::FETCH_OBJ); //PDO::FETCH_OBJ - Obtiene la siguiente fila y la devuelve como un objeto
             $response->getBody()->write(json_encode($juegos));
         } else {
             $response->getBody()->write(json_encode('No se encontraron juegos'));
         }
-        $resul = null;
+        $resul = null; //ver si los dejo o los saco
         $db = null;
         return $response;
     } catch (\PDOException $e){
@@ -348,12 +453,25 @@ $app->get('/juegos', function (Request $request, Response $response, $args){
 });
 
 
+//M) BUSCAR JUEGOS CON LOS FILTROS
+
+
 $app->run();
 
 //CONSULTA: COMO ES MEJOR PONERLE A LAS URL API ok
-//CHEQUEOS QUE HAY QUE HACER
-//HAY QUE DEVOLVER LOS MENSAJES PERSONALIZADOS? O ALCANZA CON EL RESPONSE ok
+//CHEQUEOS QUE HAY QUE HACER ok
 //uso el catch? o esta mal? si no dejar asi ok
-//no se puede eliminar un genero q esta en uso
+//no se puede eliminar un genero q esta en uso ok
+//agregar algo para malas url
+
+
+
+//PDO, PHP DATA OBJECT, CAPA DE ABSTRACCION
+//Es una especie de libreria para conectar a base de datos, hacer consultas, etc
+//esta entre php y las base de datos, es un lenguaje orientado a objetos
+//con pdo nos podemos conectar a distintas bases de datos a diferencia de mysqli y mysql o  mysql server
+//pdo es una clase con funciones o metodos
+//con pdo se suele usar el try / catch
+//
 ?>
 
