@@ -432,22 +432,28 @@ $app->delete('/juegos/{id}', function(Request $request, Response $response){
 
 //L) OBTENER TODOS LOS JUEGOS
 //OK, sin parametros ni body
-$app->get('/juegos', function (Request $request, Response $response, $args){
+$app->get('/juegos', function (Request $request, Response $response){
     global $db;
+    $respuesta = array();
+    $respuesta["exito"] = true;
     $sql = "SELECT * FROM juegos";
     try{
         $resul = $db->query($sql);
         if($resul->rowCount() > 0){
-            $juegos = $resul->fetchAll(\PDO::FETCH_OBJ); //PDO::FETCH_OBJ - Obtiene la siguiente fila y la devuelve como un objeto
-            $response->getBody()->write(json_encode($juegos));
+            $juegos = $resul->fetchAll(\PDO::FETCH_OBJ);
+            $json = array('mensaje' => 'Juegos disponibles', 'exito' => $respuesta["exito"], 'juegos' => $juegos); //PDO::FETCH_OBJ - Obtiene la siguiente fila y la devuelve como un objeto
+            $response->getBody()->write(json_encode($json));
         } else {
-            $response->getBody()->write(json_encode('No se encontraron juegos'));
+            $json = array('mensaje' => 'No se encontraron juegos', 'exito' => false);
+            $response->getBody()->write(json_encode($json ));
+            return $response->withStatus(400);
         }
         $resul = null; //ver si los dejo o los saco
         $db = null;
-        return $response;
+        return $response; //esto no se si dejarlo o sacarlo
     } catch (\PDOException $e){
-        $response->getBody()->write($e->getMessage());
+        $respuesta= array('mensaje' => $e->getMessage(), 'exito' => false);
+        $response->getBody()->write(json_encode($respuesta));
         return $response->withStatus(400);
     }
 });
