@@ -11,8 +11,6 @@ use App\Models\Db;
 require __DIR__ . '/vendor/autoload.php';
 include ('./src/Models/Db.php');
 
-$db = new Db();
-$db = $db->connect();
 
 $app = AppFactory::create();
 $app->addBodyParsingMiddleware();
@@ -25,20 +23,25 @@ $app->get('/', function (Request $request, Response $response, $args) {
 
 //A) CREAR UN NUEVO GENERO
 //probar en el body, x-www con el nombre a agregar
-//preg si hay q chequear si ya existe
+//si mando dos param lo agrega igual
 $app->post('/generos', function(Request $request, Response $response){ //post porque es para crear //agrega aun cuando hay error
-    // $generoInsertar = $args["genero"]; es una forma de hacerlo poniengo $args = [] como parametro de la funcion cuando viene por 
-    global $db;
-    $nuevoGenero = $request->getParsedBody(); //QUE CHEQUEOS TENGO QUE AGREGAR
+    // $generoInsertar = $args["genero"]; es una forma de hacerlo poniengo $args = [] como parametro de la funcion cuando viene por
+    $db = new Db();
+    $db = $db->connect();
+    $nuevoGenero = $request->getParsedBody(); //agregar chequeo para vacio?
+    $respuesta = array();
+    $respuesta["exito"] = true;
     try{
         $cons = $db->prepare($sql = "INSERT INTO generos (nombre) VALUES (?)");
         $cons->bindParam(1, $nuevoGenero['nombre']);
         $cons->execute();
-        $response->getBody()->write(json_encode('Se agrego un genero'));
+
+        $json = array('mensaje' => 'Se agrego un genero', 'exito' => true);
+        $response->getBody()->write(json_encode($json));
         return $response->withStatus(200);
-    } catch (\PDOException $err){
-        $response->getBody()->write($err->getMessage());
-        return $response->withStatus(400); 
+    } catch (\PDOException $e){
+        $response->getBody()->write($e->getMessage());
+        return $response->withStatus(500); 
     }
     
 });
@@ -49,9 +52,11 @@ $app->post('/generos', function(Request $request, Response $response){ //post po
 //anda, prueba con x-www el con el nombre nuevo
 //si no se pone parametro tira error 500, hago algo mas con eso?
 $app->put('/generos/{id}', function(Request $request, Response $response){ //funciona si mando el id por url, no me actualiza el nombre, el form data solo lo parsea con post, para put usar raw json o x
-    global $db;
+    $db = new Db();
+    $db = $db->connect();
     $campos = $request->getParsedBody();
-
+    $respuesta = array();
+    $respuesta["exito"] = true;
     try{
         $id = $request->getAttribute('id'); //cuando el parametro viene en la url
         $cons = $db->prepare("SELECT * FROM generos WHERE id=?"); //el prepare prepara una plantilla de la sentencia sql que se envia a la bd con valores sin especificar (?), se guarda el resultado sin ejecutarlo
@@ -64,16 +69,19 @@ $app->put('/generos/{id}', function(Request $request, Response $response){ //fun
             $cons->bindParam(2, $id);
             $cons->execute();
 
-            $response->getBody()->write((json_encode('Se actualizo un genero')));
+            $json = array('mensaje' => 'Se actualizo un genero', 'exito' => true);
+            $response->getBody()->write((json_encode($json)));
             return $response->withStatus(200); 
         } else {
-            $response->getBody()->write(json_encode('No se encontro un genero con el id: ' . $id));
+            $json = array('mensaje' => 'No se encontro un genero con el id: '. $id, 'exito' => false);
+            $response->getBody()->write((json_encode($json)));
             return $response->withStatus(400); 
         }
 
-    } catch (\PDOException $err){
-        $response->getBody()->write($err->getMessage());
-        return $response->withStatus(400); 
+    } catch (\PDOException $e){
+        $json = array('mensaje' => $e, 'exito' => false);
+        $response->getBody()->write((json_encode($json)));
+        return $response->withStatus(500); 
     }
 });
 
@@ -83,8 +91,8 @@ $app->put('/generos/{id}', function(Request $request, Response $response){ //fun
 //ok
 //que pasa si no se envia parametro
 $app->delete('/generos/{id}', function(Request $request, Response $response){
-    global $db;
-    
+    $db = new Db();
+    $db = $db->connect();
     try{
         $id = $request->getAttribute('id');
         //traigo los juegos
@@ -99,22 +107,26 @@ $app->delete('/generos/{id}', function(Request $request, Response $response){
 
         //si el id esta siendo usado, no se puede eliminar
         if ($juegos->rowCount() > 0){
-            $response->getBody()->write(json_encode('Genero en uso, no se puede eliminar'));
+            $json = array('mensaje' => 'Genero en uso, no se puede eliminar', 'exito' => false);
+            $response->getBody()->write((json_encode($json)));
             return $response->withStatus(400);
-            //si el id no existe, tampoco
         } else if ($gen->rowCount() == 0){
-            $response->getBody()->write(json_encode('No se encontro el genero con id: ' . $id));
+            $json = array('mensaje' => 'No se encontro el genero con id: ' . $id, 'exito' => false);
+            $response->getBody()->write((json_encode($json)));
             return $response->withStatus(400);
         } else { //si existe y no esta en uso se elimina
             $gen = $db->prepare("DELETE FROM generos WHERE id=?");
             $gen->bindParam(1, $id);
             $gen->execute();
-            $response->getBody()->write(json_encode('Se elimino el genero con id:  ' . $id));
+            
+            $json = array('mensaje' => 'Se elimino el genero con id: ' . $id, 'exito' => false);
+            $response->getBody()->write((json_encode($json)));
             return $response->withStatus(200);
         }
     } catch (\PDOException $err){
-        $response->getBody()->write($err->getMessage());
-        return $response->withStatus(400);
+        $json = array('mensaje' => $e->getMessage(), 'exito' => false);
+        $response->getBody()->write((json_encode($json)));
+        return $response->withStatus(500);
     }
 });
 
@@ -123,42 +135,50 @@ $app->delete('/generos/{id}', function(Request $request, Response $response){
 //D) OBTENER TODOS LOS GENEROS
 //OK
 $app->get('/generos', function(Request $request, Response $response){
-    global $db;
+    $db = new Db();
+    $db = $db->connect();
     $sql = "SELECT * FROM generos";
     try{
         $resul = $db->query($sql);
         if($resul->rowCount() > 0){
             $generos = $resul->fetchAll(\PDO::FETCH_OBJ); //PDO::FETCH_OBJ - Obtiene la siguiente fila y la devuelve como un objeto
-            $response->getBody()->write(json_encode($generos));
+            $json = array('mensaje' => 'Generos disponibles', 'exito' => true, 'Generos: ' => $generos);
+            $response->getBody()->write((json_encode($json)));
+            return $response->withStatus(200);
         } else {
-            $response->getBody()->write(json_encode('No se encontraron generos'));
+            $json = array('mensaje' => 'No se encontraron generos', 'exito' => false);
+            $response->getBody()->write((json_encode($json)));
+            return $response->withStatus(400);
         }
-        $resul = null;
-        $db = null;
         return $response;
     } catch (\PDOException $e){
-        $response->getBody()->write($e->getMessage());
-        return $response->withStatus(200);
+        $json = array('mensaje' => $e->getMessage(), 'exito' => false);
+        $response->getBody()->write((json_encode($json)));
+        return $response->withStatus(500);
     }
 });
 
 
-//E) CREAR UNA NUEVA PLATAFORMA //ver//
+//E) CREAR UNA NUEVA PLATAFORMA
 //ok, probar sin barra al final si no da error, por x-www el nombre a crear
 //faltan chequeos, q pasa si ya existe el nombre
-//no esta especificado
+//no esta especificado, como yo quiera
 $app->post('/plataformas', function(Request $request, Response $response){
-    global $db;
+    $db = new Db();
+    $db = $db->connect();
     $nuevaPlataforma = $request->getParsedBody();
     try{
         $cons = $db->prepare("INSERT INTO plataformas (nombre) VALUES (?)");
         $cons->bindPAram(1, $nuevaPlataforma['nombre']);
         $cons->execute();
-        $response->getBody()->write(json_encode('Se agrego una plataforma'));
+
+        $json = array('mensaje' => 'Se agrego una plataforma', 'exito' => true);
+        $response->getBody()->write((json_encode($json)));
         return $response->withStatus(200);
-    } catch (\PDOException $err){
-        $response->getBody()->write($err->getMessage());
-        return $response->withStatus(400);
+    } catch (\PDOException $e){
+        $json = array('mensaje' => $e->getMessage(), 'exito' => false);
+        $response->getBody()->write((json_encode($json)));
+        return $response->withStatus(500);
     }
 });
 
@@ -168,7 +188,8 @@ $app->post('/plataformas', function(Request $request, Response $response){
 //ok, para probar, enviar por x-www el nombre a actualizar
 //si no se envia nada, error 500, esta ok?
 $app->put('/plataformas/{id}', function(Request $request, Response $response){
-    global $db;
+    $db = new Db();
+    $db = $db->connect();
     $campos = $request->getParsedBody();
 
     try{
@@ -183,16 +204,19 @@ $app->put('/plataformas/{id}', function(Request $request, Response $response){
             $cons->bindParam(2, $id);
             $cons->execute();
 
-            $response->getBody()->write((json_encode('Se actualizo una plataforma')));
-            return $response->withStatus(200); 
+            $json = array('mensaje' => 'Se actualizo una plataforma', 'exito' => true);
+            $response->getBody()->write((json_encode($json)));
+            return $response->withStatus(200);
         } else {
-            $response->getBody()->write(json_encode('No se encontro una plataforma con el id: ' . $id));
-            return $response->withStatus(400); 
+            $json = array('mensaje' => 'No se encontro una plataforma con el id: ' . $id, 'exito' => false);
+            $response->getBody()->write((json_encode($json)));
+            return $response->withStatus(400);
         }
 
     } catch (\PDOException $err){
-        $response->getBody()->write($err->getMessage());
-        return $response->withStatus(400); 
+        $json = array('mensaje' => $e->getMessage(), 'exito' => false);
+        $response->getBody()->write((json_encode($json)));
+        return $response->withStatus(500); 
     }
 });
 
@@ -201,7 +225,8 @@ $app->put('/plataformas/{id}', function(Request $request, Response $response){
 //ok
 //ver que pasa cuando no se envia una plat
 $app->delete('/plataformas/{id}', function(Request $request, Response $response){
-    global $db;
+    $db = new Db();
+    $db = $db->connect();
     
     try{
         $id = $request->getAttribute('id');
@@ -221,18 +246,21 @@ $app->delete('/plataformas/{id}', function(Request $request, Response $response)
             return $response->withStatus(400);
             //si el id no existe, tampoco
         } else if ($plat->rowCount() == 0){
-            $response->getBody()->write(json_encode('No se encontro la plataforma con id: ' . $id));
+            $json = array('mensaje' => 'No se encontro una plataforma con el id: ' . $id, 'exito' => false);
+            $response->getBody()->write((json_encode($json)));
             return $response->withStatus(400);
         } else { //si existe y no esta en uso se elimina
             $plat = $db->prepare("DELETE FROM plataformas WHERE id=?");
             $plat->bindParam(1, $id);
             $plat->execute();
-            $response->getBody()->write(json_encode('Se elimino la plataforma con id:' . $id));
+            $json = array('mensaje' => 'Se elimino la plataforma con id:' . $id, 'exito' => false);
+            $response->getBody()->write((json_encode($json)));
             return $response->withStatus(200);
         }
-    } catch (\PDOException $err){
-        $response->getBody()->write($err->getMessage());
-        return $response->withStatus(400);
+    } catch (\PDOException $e){
+        $json = array('mensaje' => $e->getMessage(), 'exito' => false);
+        $response->getBody()->write((json_encode($json)));
+        return $response->withStatus(500);
     }
 });
 
@@ -241,22 +269,25 @@ $app->delete('/plataformas/{id}', function(Request $request, Response $response)
 //H) OBTENER TODAS LAS PLATAFORMAS ASUMO
 //OK
 $app->get('/plataformas', function(Request $request, Response $response){
-    global $db;
+    $db = new Db();
+    $db = $db->connect();
     $sql = "SELECT * FROM plataformas";
     try{
         $resul = $db->query($sql);
         if($resul->rowCount() > 0){
             $plataformas = $resul->fetchAll(\PDO::FETCH_OBJ); //PDO::FETCH_OBJ - Obtiene la siguiente fila y la devuelve como un objeto
-            $response->getBody()->write(json_encode($plataformas));
+
+            $json = array('mensaje' => 'Generos disponibles', 'exito' => true, 'Generos: ' => $plataformas);
+            $response->getBody()->write((json_encode($json)));
+            return $response->withStatus(200);
         } else {
-            $response->getBody()->write(json_encode('No se encontraron plataformas'));
+            $json = array('mensaje' => 'No se encontraron plataformas', 'exito' => false);
+            $response->getBody()->write((json_encode($json)));
+            return $response->withStatus(400);
         }
-        $resul = null;
-        $db = null;
-        return $response;
     } catch (\PDOException $e){
         $response->getBody()->write($e->getMessage());
-        return $response->withStatus(400);
+        return $response->withStatus(500);
     }
 });
 
@@ -266,7 +297,8 @@ $app->get('/plataformas', function(Request $request, Response $response){
 //si mando todos los datos, todo bien
 //probar con form-data, mandar los key y value y que coincidan los nombres de campos
 $app->post('/juegos', function(Request$request, Response $response){
-    global $db;
+    $db = new Db();
+    $db = $db->connect();
     $campos = $request->getParsedBody();
 
     try{
@@ -361,7 +393,7 @@ $app->post('/juegos', function(Request$request, Response $response){
     } catch (\PDOException $e){
         $respuesta= array('mensaje' => $e->getMessage(), 'exito' => false);
         $response->getBody()->write(json_encode($respuesta));
-        return $response->withStatus(400);
+        return $response->withStatus(500);
     }
 });
 
@@ -371,9 +403,9 @@ $app->post('/juegos', function(Request$request, Response $response){
 //si se manda otra cosa q no se aun itn que pasa, o no importa, el id en la bd es de tipo int
 //se manda con x-www-form-urlencoded
 $app->put('/juegos/{id}', function(Request$request, Response $response){
-    global $db;
+    $db = new Db();
+    $db = $db->connect();
     $campos = $request->getParsedBody();
-
     try{
         $id = $request->getAttribute('id'); //cuando el parametro viene en la url
         $cons = $db->prepare("SELECT * FROM juegos WHERE id=?"); 
@@ -386,16 +418,18 @@ $app->put('/juegos/{id}', function(Request$request, Response $response){
             $cons->bindParam(2, $id);
             $cons->execute();
 
-            $response->getBody()->write((json_encode('Se actualizo un juego')));
+            $json = array('mensaje' => 'Se actualizo un juego', 'exito' => true);
+            $response->getBody()->write(json_encode($json));
             return $response->withStatus(200); 
         } else {
-            $response->getBody()->write(json_encode('No hay un juego con el id: ' . $id));
-            return $response->withStatus(400); 
+            $json = array('mensaje' => 'No hay un juego con el id: ' . $id, 'exito' => false);
+            $response->getBody()->write(json_encode($json));
+            return $response->withStatus(400);
         }
 
-    } catch (\PDOException $err){
-        $response->getBody()->write($err->getMessage());
-        return $response->withStatus(400); 
+    } catch (\PDOException $e){
+        $response->getBody()->write($e->getMessage());
+        return $response->withStatus(500); 
     }
 });
 
@@ -404,7 +438,8 @@ $app->put('/juegos/{id}', function(Request$request, Response $response){
 //ok, sin param, id en url
 //preg si el mje de que no hay juego esta bien
 $app->delete('/juegos/{id}', function(Request $request, Response $response){
-    global $db;
+    $db = new Db();
+    $db = $db->connect();
     
     try{
         $id = $request->getAttribute('id');
@@ -415,15 +450,18 @@ $app->delete('/juegos/{id}', function(Request $request, Response $response){
             $cons = $db->prepare("DELETE FROM juegos WHERE id=?");
             $cons->bindParam(1, $id);
             $cons->execute();
-            $response->getBody()->write(json_encode('Se elimino el juego con id: ' . $id));
+
+            $json = array('mensaje' => 'Se elimino el juego con id: ' . $id, 'exito' => true);
+            $response->getBody()->write(json_encode($json ));
             return $response->withStatus(200);
         } else {
-            $response->getBody()->write(json_encode('No hay un juego con id: ' . $id));
+            $json = array('mensaje' => 'No hay un juego con id: ' . $id, 'exito' => false);
+            $response->getBody()->write(json_encode($json));
             return $response->withStatus(400);
         }
     } catch (\PDOException $err){
         $response->getBody()-write($err->getMessage());
-        return $response->withStatus(400);
+        return $response->withStatus(500);
     }
 });
 
@@ -433,7 +471,9 @@ $app->delete('/juegos/{id}', function(Request $request, Response $response){
 //L) OBTENER TODOS LOS JUEGOS
 //OK, sin parametros ni body
 $app->get('/juegos', function (Request $request, Response $response){
-    global $db;
+    $db = new Db();
+    $db = $db->connect();
+
     $respuesta = array();
     $respuesta["exito"] = true;
     $sql = "SELECT * FROM juegos";
@@ -448,18 +488,75 @@ $app->get('/juegos', function (Request $request, Response $response){
             $response->getBody()->write(json_encode($json ));
             return $response->withStatus(400);
         }
-        $resul = null; //ver si los dejo o los saco
-        $db = null;
-        return $response; //esto no se si dejarlo o sacarlo
     } catch (\PDOException $e){
         $respuesta= array('mensaje' => $e->getMessage(), 'exito' => false);
         $response->getBody()->write(json_encode($respuesta));
-        return $response->withStatus(400);
+        return $response->withStatus(500);
     }
 });
 
 
 //M) BUSCAR JUEGOS CON LOS FILTROS
+$app->get('/juegos/buscar', function (Request $request, Response $response){
+    $db = new Db();
+    $db = $db->connect();
+
+    $sql = "SELECT * FROM juegos"; //consulta principal, se crea la query dinamicamente
+
+    try{    //para concatenar la consulta se puede usar un arreglo e ir agregandolos
+        $parametros = $request->getQueryParams();//obtengo los parametros como un arreglo para chequeo de si existen o no
+        $condicion = [];
+        $setParam = [];
+
+        if(isset($parametros['nombre'])){ //los nombres de los parametros en el arreglo TIENEN que coincidir con los de los nombres mandados por postman
+            $nombre = $parametros['nombre'];
+            $condicion[] = "nombre LIKE ?";
+            $setParam[] = "%" . $nombre . "%";
+        }
+
+        if(isset($parametros['id_genero'])){
+            $genero = $parametros['id_genero'];
+            $condicion[] = "id_genero=?";
+            $setParam[] = $genero;
+        }
+
+        if(isset($parametros['id_plataforma'])){
+            $plataforma = $parametros['id_plataforma'];
+            $condicion[] = "id_plataforma=?";
+            $setParam[] = $plataforma;
+        }
+
+        if(isset($parametros['ordenar'])){
+            if($parametros['ordenar'] == 'asc'){
+                $orden = "ASC";
+            } else {
+                $orden = "DESC";
+            }
+        }
+
+        if($condicion){
+            $sql .= " WHERE ". implode(" AND ", $condicion); //implode une elementos de un array en un string, implode(string $separador, array $array) : string. el separador por defecto es un str vacio
+        }
+
+        if(isset($parametros['ordenar'])){
+            $sql .= " ORDER BY nombre $orden";
+        }
+
+        $consulta = $db->prepare($sql);
+        $consulta->execute($setParam);
+        $juegos = $consulta->fetchAll(\PDO::FETCH_OBJ);
+        //$datos = $consulta->fetchAll(); es lo mismo pero va pdo
+
+        $json = array('mensaje' => 'Juegos que coinciden con la busqueda', 'exito' => true, 'juegos' => $juegos);
+        $response->getBody()->write(json_encode($json));
+        return $response->withStatus(200);
+
+    } catch (\PDOException $e){
+        $respuesta= array('mensaje' => $e->getMessage(), 'exito' => false);
+        $response->getBody()->write(json_encode($respuesta));
+        return $response->withStatus(500);
+    }
+});
 
 
 $app->run();
@@ -469,6 +566,8 @@ $app->run();
 //uso el catch? o esta mal? si no dejar asi ok
 //no se puede eliminar un genero q esta en uso ok
 //agregar algo para malas url
+
+//ver lo de los numeros de los errrores
 
 
 
