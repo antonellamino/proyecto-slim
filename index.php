@@ -13,7 +13,12 @@ include ('./src/Models/Db.php');
 
 
 $app = AppFactory::create();
+
+//parse json
+//documentacion -> https://www.slimframework.com/docs/v4/middleware/body-parsing.html
 $app->addBodyParsingMiddleware();
+$app->addRoutingMiddleware();
+$app->addErrorMiddleware(true, true, true);
 
 $app->get('/', function (Request $request, Response $response, $args) {
     $response->getBody()->write("Hello world!");
@@ -89,7 +94,6 @@ $app->put('/generos/{id}', function(Request $request, Response $response){ //fun
 
 //C) ELIMINAR UN GENERO //VER//
 //ok
-//que pasa si no se envia parametro
 $app->delete('/generos/{id}', function(Request $request, Response $response){
     $db = new Db();
     $db = $db->connect();
@@ -503,7 +507,9 @@ $app->get('/juegos/buscar', function (Request $request, Response $response){
 
     $sql = "SELECT * FROM juegos"; //consulta principal, se crea la query dinamicamente
 
-    try{    //para concatenar la consulta se puede usar un arreglo e ir agregandolos
+    try{    
+        //para concatenar la consulta uso un arreglo y se van agregandolos
+        //getqueryparams https://www.slimframework.com/docs/v3/objects/request.html
         $parametros = $request->getQueryParams();//obtengo los parametros como un arreglo para chequeo de si existen o no
         $condicion = [];
         $setParam = [];
@@ -562,12 +568,16 @@ $app->get('/juegos/buscar', function (Request $request, Response $response){
 $app->run();
 
 //CONSULTA: COMO ES MEJOR PONERLE A LAS URL API ok
-//CHEQUEOS QUE HAY QUE HACER ok
-//uso el catch? o esta mal? si no dejar asi ok
-//no se puede eliminar un genero q esta en uso ok
-//agregar algo para malas url
+//hago un solo endpoint para traer todos los juegos y filtrar o los hago por separado? en el buscar, si no hay param los trae todos, estaria dos veces
+//los datos los recibo como json o solo en el body?
 
 //ver lo de los numeros de los errrores
+
+
+//PROBAR ENDPOINTS CON POSTMAN ENVIANDO JSON :
+        //body -> raw -> JSON
+
+
 
 
 
