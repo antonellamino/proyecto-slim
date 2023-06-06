@@ -551,8 +551,8 @@ $app->put('/juegos/{id}', function(Request $request, Response $response){
 
 //K) ELIMINAR UN JUEGO
 $app->delete('/juegos/{id}', function(Request $request, Response $response){
-    global $db;
-
+    $db = new Db();
+    $db = $db->connect();
     try{
         $id = $request->getAttribute('id');
         $cons = $db->prepare("SELECT * FROM juegos WHERE id=?");
@@ -564,14 +564,22 @@ $app->delete('/juegos/{id}', function(Request $request, Response $response){
             $cons->bindParam(1, $id);
             $cons->execute();
 
-            $response->getBody()->write(json_encode('Se elimino un juego'));
+
+            $db = null;
+            $json = array('mensaje' => 'Se elimino el juego con id: ' . $id, 'exito: ' => true);
+            $response->getBody()->write(json_encode($json));
             return $response->withStatus(200);
         } else {
-            $response->getBody()->write(json_encode('No se encontro el juego con id: ' . $id));
+
+            $db = null;
+            $json = array('mensaje' => 'No se encontro el juego con id: ' . $id, 'exito: ' => false);
+            $response->getBody()->write(json_encode($json));
             return $response->withStatus(400);
         }
     } catch (\PDOException $err){
-        $response->getBody()-write($err->getMessage());
+        $db = null;
+        $respuesta= array('mensaje' => $e->getMessage(), 'exito' => false);
+        $response->getBody()->write(json_encode($respuesta));
         return $response->withStatus(400);
     }
 });
