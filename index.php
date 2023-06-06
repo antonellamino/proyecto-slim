@@ -342,7 +342,7 @@ $app->post('/juegos', function(Request $request, Response $response){
             $respuesta["exito"] = false;
         }
         //chequeo tipo de img
-        if(!isset($campos['tipo_imagen']) or !(($campos['tipo_imagen'] == 'jpeg') or ($campos['tipo_imagen'] == 'jpg') or ($campos['tipo_imagen'] == 'png'))){
+        if(!isset($campos['tipo_imagen']) and !(($campos['tipo_imagen'] == 'jpeg') and ($campos['tipo_imagen'] == 'jpg') and ($campos['tipo_imagen'] == 'png'))){
             $respuesta["exito"] = false;
             array_push($respuesta["errores"], "El tipo de imagen debe estar seteada y ser de tipo jpeg, jpg o png");
             
@@ -385,7 +385,7 @@ $app->post('/juegos', function(Request $request, Response $response){
             
         } else {
             $id = $campos['id_plataforma'];
-            $gen = $db->prepare("SELECT * FROM generos where id=?");
+            $gen = $db->prepare("SELECT * FROM plataformas where id=?"); //copy paste de generos, quedo tabla generos, cambiado
             $gen->bindParam(1, $id);
             $gen->execute();
 
@@ -464,8 +464,7 @@ $app->put('/juegos/{id}', function(Request $request, Response $response){
             }
 
             if(isset($campos['tipo_imagen'])){
-                if(($campos['tipo_imagen'] != 'jpeg') or ($campos['tipo_imagen'] != 'jpg') or ($campos['tipo_imagen'] != 'png')){
-                    $res["exito"] = false;
+                if(($campos['tipo_imagen'] != 'jpeg') and ($campos['tipo_imagen'] != 'jpg') and ($campos['tipo_imagen'] != 'png')){
                     array_push($res["errores"], "La imagen tiene que ser de tipo jpg, jpeg, png");
                 }
                 $consulta[] = "tipo_imagen=?";
@@ -507,7 +506,7 @@ $app->put('/juegos/{id}', function(Request $request, Response $response){
 
             if (isset($campos['id_plataforma'])){
                 $idPlat = $campos['id_plataforma'];
-                $plat = $db->prepare("SELECT * FROM generos where id=?");
+                $plat = $db->prepare("SELECT * FROM plataformas where id=?");
                 $plat->bindParam(1, $idPlat);
                 $plat->execute();
                 if($plat->rowCount() > 0){
@@ -520,7 +519,7 @@ $app->put('/juegos/{id}', function(Request $request, Response $response){
             }
 
             if($res['exito']){
-                $sql .= "UPDATE juegos SET ". implode(" , ", $consulta) . " WHERE id=?";
+                $sql = "UPDATE juegos SET ". implode(" , ", $consulta) . " WHERE id=?"; //sobraba el punto
                 
                 $param[] = $id;
                 $consulta = $db->prepare($sql);
@@ -546,6 +545,34 @@ $app->put('/juegos/{id}', function(Request $request, Response $response){
         $db = null;
         $response->getBody()->write($e->getMessage());
         return $response->withStatus(400); 
+    }
+});
+
+
+//K) ELIMINAR UN JUEGO
+$app->delete('/juegos/{id}', function(Request $request, Response $response){
+    global $db;
+
+    try{
+        $id = $request->getAttribute('id');
+        $cons = $db->prepare("SELECT * FROM juegos WHERE id=?");
+        $cons->bindParam(1, $id);
+        $cons->execute();
+
+        if($cons->rowCount() != 0){
+            $cons = $db->prepare("DELETE FROM juegos WHERE id=?");
+            $cons->bindParam(1, $id);
+            $cons->execute();
+
+            $response->getBody()->write(json_encode('Se elimino un juego'));
+            return $response->withStatus(200);
+        } else {
+            $response->getBody()->write(json_encode('No se encontro el juego con id: ' . $id));
+            return $response->withStatus(400);
+        }
+    } catch (\PDOException $err){
+        $response->getBody()-write($err->getMessage());
+        return $response->withStatus(400);
     }
 });
 
