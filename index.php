@@ -24,13 +24,13 @@ $app->addErrorMiddleware(true, true, true);
 //A) CREAR UN NUEVO GENERO
 //OK
 //probar en el body, x-www con el nombre a agregar
-$app->post('/generos', function(Request $request, Response $response){ //post porque es para crear //agrega aun cuando hay error
+$app->post('/generos', function (Request $request, Response $response){ //post porque es para crear //agrega aun cuando hay error
     // $generoInsertar = $args["genero"]; es una forma de hacerlo poniengo $args = [] como parametro de la funcion cuando viene por
     $nuevoGenero = $request->getParsedBody();
     if(!isset($nuevoGenero['nombre']) or empty($nuevoGenero['nombre'])){
         $json = array('mensaje' => 'El nombre tiene que estar seteado y no tiene que estar vacio', 'exito' => false);
         $response->getBody()->write(json_encode($json));
-        return $response->withStatus(400);
+        return $response->withHeader("content-type", "application/json")->withStatus(400);
     }
     $db = new Db();
     $db = $db->connect();
@@ -43,11 +43,11 @@ $app->post('/generos', function(Request $request, Response $response){ //post po
 
         $json = array('mensaje' => 'Se agrego el genero: ' . $nuevoGenero['nombre'], 'exito' => true);
         $response->getBody()->write(json_encode($json));
-        return $response->withStatus(200);
+        return $response->withHeader("content-type", "application/json")->withStatus(200);
     } catch (\PDOException $e){
         $db = null;
         $response->getBody()->write($e->getMessage());
-        return $response->withStatus(400); 
+        return $response->withHeader("content-type", "application/json")->withStatus(400); 
     }
     
 });
@@ -56,13 +56,14 @@ $app->post('/generos', function(Request $request, Response $response){ //post po
 
 //B) ACTUALIZAR INFORMACION DE UN GENERO
 //prueba con x-www el con el nombre nuevo
+//
 $app->put('/generos/{id}', function(Request $request, Response $response){ //funciona si mando el id por url, no me actualiza el nombre, el form data solo lo parsea con post, para put usar raw json o x
     
     $campos = $request->getParsedBody();
     if(!isset($campos['nombre']) or empty($campos['nombre'])){
         $json = array('mensaje' => 'El nombre tiene que estar seteado y no tiene que estar vacio', 'exito' => false);
         $response->getBody()->write(json_encode($json));
-        return $response->withStatus(400);
+        return $response->withHeader("content-type", "application/json")->withStatus(400);
     }
     $db = new Db();
     $db = $db->connect();
@@ -82,26 +83,26 @@ $app->put('/generos/{id}', function(Request $request, Response $response){ //fun
 
             $json = array('mensaje' => 'Se actualizo el genero id: ' . $id . ' a ' . $campos['nombre'], 'exito' => true);
             $response->getBody()->write((json_encode($json)));
-            return $response->withStatus(200); 
+            return $response->withHeader("content-type", "application/json")->withStatus(200); 
         } else {
             $db = null;
             $json = array('mensaje' => 'No se encontro un genero con el id: '. $id, 'exito' => false);
             $response->getBody()->write((json_encode($json)));
-            return $response->withStatus(400); 
+            return $response->withHeader("content-type", "application/json")->withStatus(400); 
         }
 
     } catch (\PDOException $e){
         $db = null;
         $json = array('mensaje' => $e, 'exito' => false);
         $response->getBody()->write((json_encode($json)));
-        return $response->withStatus(400); 
+        return $response->withHeader("content-type", "application/json")->withStatus(400); 
     }
 });
 
 
 
-//C) ELIMINAR UN GENERO //VER los null//
-//ok
+//C) ELIMINAR UN GENERO
+//x-www + id del genero a eliminar en uri + nombre del genero key-value
 $app->delete('/generos/{id}', function(Request $request, Response $response){
     $db = new Db();
     $db = $db->connect();
@@ -122,14 +123,14 @@ $app->delete('/generos/{id}', function(Request $request, Response $response){
             $db = null;
             $json = array('mensaje' => 'Genero en uso, no se puede eliminar', 'exito' => false);
             $response->getBody()->write((json_encode($json)));
-            return $response->withStatus(400);
+            return $response->withHeader("content-type", "application/json")->withStatus(400);
         } else if ($gen->rowCount() == 0){
 
             $db = null;
 
             $json = array('mensaje' => 'No se encontro el genero con id: ' . $id, 'exito' => false);
             $response->getBody()->write((json_encode($json)));
-            return $response->withStatus(400);
+            return $response->withHeader("content-type", "application/json")->withStatus(400);
         } else { //si existe y no esta en uso se elimina
             $gen = $db->prepare("DELETE FROM generos WHERE id=?");
             $gen->bindParam(1, $id);
@@ -139,13 +140,13 @@ $app->delete('/generos/{id}', function(Request $request, Response $response){
 
             $json = array('mensaje' => 'Se elimino el genero con id: ' . $id, 'exito' => true);
             $response->getBody()->write((json_encode($json)));
-            return $response->withStatus(200);
+            return $response->withHeader("content-type", "application/json")->withStatus(200);
         }
     } catch (\PDOException $err){
         $db = null;
         $json = array('mensaje' => $e->getMessage(), 'exito' => false);
         $response->getBody()->write((json_encode($json)));
-        return $response->withStatus(400);
+        return $response->withHeader("content-type", "application/json")->withStatus(400);
     }
 });
 
@@ -163,12 +164,12 @@ $app->get('/generos', function(Request $request, Response $response){
         $db = null;
         $json = array('mensaje' => 'Generos disponibles', 'exito' => true, 'Generos: ' => $generos);
         $response->getBody()->write((json_encode($json)));
-        return $response->withStatus(200);
+        return $response->withHeader("content-type", "application/json")->withStatus(200);
     } catch (\PDOException $e){
         $db = null;
         $json = array('mensaje' => $e->getMessage(), 'exito' => false);
         $response->getBody()->write((json_encode($json)));
-        return $response->withStatus(400);
+        return $response->withHeader("content-type", "application/json")->withStatus(400);
     }
 });
 
@@ -180,7 +181,7 @@ $app->post('/plataformas', function(Request $request, Response $response){
     if(!isset($nuevaPlataforma['nombre']) or empty($nuevaPlataforma['nombre'])){
         $json = array('mensaje' => 'El nombre tiene que estar seteado y no tiene que estar vacio', 'exito' => false);
         $response->getBody()->write(json_encode($json));
-        return $response->withStatus(400);
+        return $response->withHeader("content-type", "application/json")->withStatus(400);
     }
     $db = new Db();
     $db = $db->connect();
@@ -193,12 +194,12 @@ $app->post('/plataformas', function(Request $request, Response $response){
 
         $json = array('mensaje' => 'Se agrego la plataforma: ' . $nuevaPlataforma['nombre'], 'exito' => true);
         $response->getBody()->write((json_encode($json)));
-        return $response->withStatus(200);
+        return $response->withHeader("content-type", "application/json")->withStatus(200);
     } catch (\PDOException $e){
         $db = null;
         $json = array('mensaje' => $e->getMessage(), 'exito' => false);
         $response->getBody()->write((json_encode($json)));
-        return $response->withStatus(400);
+        return $response->withHeader("content-type", "application/json")->withStatus(400);
     }
 });
 
@@ -212,7 +213,7 @@ $app->put('/plataformas/{id}', function(Request $request, Response $response){
     if(!isset($campos['nombre']) or empty($campos['nombre'])){
         $json = array('mensaje' => 'El nombre tiene que estar seteado y no tiene que estar vacio', 'exito' => false);
         $response->getBody()->write(json_encode($json));
-        return $response->withStatus(400);
+        return $response->withHeader("content-type", "application/json")->withStatus(400);
     }
     $db = new Db();
     $db = $db->connect();
@@ -232,23 +233,23 @@ $app->put('/plataformas/{id}', function(Request $request, Response $response){
 
             $json = array('mensaje' => 'Se actualizo la plataforma con id: ' . $id . ' a ' . $campos['nombre'], 'exito' => true);
             $response->getBody()->write((json_encode($json)));
-            return $response->withStatus(200);
+            return $response->withHeader("content-type", "application/json")->withStatus(200);
         } else {
             $db = null;
             $json = array('mensaje' => 'No se encontro una plataforma con el id: ' . $id, 'exito' => false);
             $response->getBody()->write((json_encode($json)));
-            return $response->withStatus(400);
+            return $response->withHeader("content-type", "application/json")->withStatus(400);
         }
     } catch (\PDOException $err){
         $db = null;
         $json = array('mensaje' => $e->getMessage(), 'exito' => false);
         $response->getBody()->write((json_encode($json)));
-        return $response->withStatus(400); 
+        return $response->withHeader("content-type", "application/json")->withStatus(400); 
     }
 });
 
 
-//G) ELIMINAR UNA PLATAFORMA    //VER los null//
+//G) ELIMINAR UNA PLATAFORMA
 //ok
 $app->delete('/plataformas/{id}', function(Request $request, Response $response){
     $db = new Db();
@@ -269,29 +270,30 @@ $app->delete('/plataformas/{id}', function(Request $request, Response $response)
         //si el id esta siendo usado, no se puede eliminar
         if ($juegos->rowCount() > 0){
             $db = null;
-            $response->getBody()->write(json_encode('Plataforma en uso, no se puede eliminar'));
-            return $response->withStatus(400);
+            $json = array('mensaje' => 'Plataforma en uso, no se puede eliminar', 'exito' => false);
+            $response->getBody()->write((json_encode($json)));
+            return $response->withHeader("content-type", "application/json")->withStatus(400);
             //si el id no existe, tampoco
         } else if ($plat->rowCount() == 0){
             $db = null;
             $json = array('mensaje' => 'No se encontro una plataforma con el id: ' . $id, 'exito' => false);
             $response->getBody()->write((json_encode($json)));
-            return $response->withStatus(400);
+            return $response->withHeader("content-type", "application/json")->withStatus(400);
         } else { //si existe y no esta en uso se elimina
             $plat = $db->prepare("DELETE FROM plataformas WHERE id=?");
             $plat->bindParam(1, $id);
             $plat->execute();
             $db = null;
 
-            $json = array('mensaje' => 'Se elimino la plataforma con id: ' . $id, 'exito' => false);
+            $json = array('mensaje' => 'Se elimino la plataforma con id: ' . $id, 'exito' => true);
             $response->getBody()->write((json_encode($json)));
-            return $response->withStatus(200);
+            return $response->withHeader("content-type", "application/json")->withStatus(200);
         }
     } catch (\PDOException $e){
         $db = null;
         $json = array('mensaje' => $e->getMessage(), 'exito' => false);
         $response->getBody()->write((json_encode($json)));
-        return $response->withStatus(400);
+        return $response->withHeader("content-type", "application/json")->withStatus(400);
     }
 });
 
@@ -309,11 +311,12 @@ $app->get('/plataformas', function(Request $request, Response $response){
         $db = null;
         $json = array('mensaje' => 'Plataformas disponibles', 'exito' => true, 'Plataformas: ' => $plataformas);
         $response->getBody()->write((json_encode($json)));
-        return $response->withStatus(200);
+        return $response->withHeader("content-type", "application/json")->withStatus(200);
     } catch (\PDOException $e){
         $db = null;
-        $response->getBody()->write($e->getMessage());
-        return $response->withStatus(400);
+        $json = array('mensaje' => $e->getMessage(), 'exito' => false);
+        $response->getBody()->write((json_encode($json)));
+        return $response->withHeader("content-type", "application/json")->withStatus(400);
     }
 });
 
@@ -342,7 +345,7 @@ $app->post('/juegos', function(Request $request, Response $response){
             $respuesta["exito"] = false;
         }
         //chequeo tipo de img
-        if(!isset($campos['tipo_imagen']) and !(($campos['tipo_imagen'] == 'jpeg') and ($campos['tipo_imagen'] == 'jpg') and ($campos['tipo_imagen'] == 'png'))){
+        if(!isset($campos['tipo_imagen']) or (($campos['tipo_imagen'] != 'jpeg') and ($campos['tipo_imagen'] != 'jpg') and ($campos['tipo_imagen'] != 'png'))){
             $respuesta["exito"] = false;
             array_push($respuesta["errores"], "El tipo de imagen debe estar seteada y ser de tipo jpeg, jpg o png");
             
@@ -409,30 +412,36 @@ $app->post('/juegos', function(Request $request, Response $response){
             $db = null;
             $json = array('mensaje' => 'Se agrego un juego', 'exito' => true);
             $response->getBody()->write(json_encode($json));
-            return $response->withStatus(200);
+            return $response->withHeader("content-type", "application/json")->withStatus(200);
         } else {
             $db = null;
             $json = array('mensaje' => 'No se pudo agregar el juego.', "errores" => $respuesta["errores"], 'exito' => false);
             $response->getBody()->write((json_encode($json)));
-            return $response->withStatus(400);
+            return $response->withHeader("content-type", "application/json")->withStatus(400);
         }
     } catch (\PDOException $e){
         $db = null;
         $respuesta= array('mensaje' => $e->getMessage(), 'exito' => false);
         $response->getBody()->write(json_encode($respuesta));
-        return $response->withStatus(400);
+        return $response->withHeader("content-type", "application/json")->withStatus(400);
     }
 });
 
 
 
 //J) ACTUALIZAR UN JUEGO
-//OK
+//OK / body
 $app->put('/juegos/{id}', function(Request $request, Response $response){
     $db = new Db();
     $db = $db->connect();
     $campos = $request->getParsedBody();
     try{
+        if(empty($campos)){
+            $db =null;
+            $json = array('mensaje' => 'No se setearon parametros para actualizar', 'exito' => false);
+            $response->getBody()->write(json_encode($json));
+            return $response->withHeader("content-type", "application/json")->withStatus(400);
+        }
         $id = $request->getAttribute('id');
         $cons = $db->prepare("SELECT * FROM juegos WHERE id=?"); 
         $cons->bindParam(1, $id);
@@ -464,7 +473,8 @@ $app->put('/juegos/{id}', function(Request $request, Response $response){
             }
 
             if(isset($campos['tipo_imagen'])){
-                if(($campos['tipo_imagen'] != 'jpeg') and ($campos['tipo_imagen'] != 'jpg') and ($campos['tipo_imagen'] != 'png')){
+                if(($campos['tipo_imagen'] != 'jpeg') and ($campos['tipo_imagen'] != 'jpg') and ($campos['tipo_imagen'] != 'png')){ //tenia or, cambio a and
+                    $res["exito"] = false;
                     array_push($res["errores"], "La imagen tiene que ser de tipo jpg, jpeg, png");
                 }
                 $consulta[] = "tipo_imagen=?";
@@ -519,7 +529,7 @@ $app->put('/juegos/{id}', function(Request $request, Response $response){
             }
 
             if($res['exito']){
-                $sql = "UPDATE juegos SET ". implode(" , ", $consulta) . " WHERE id=?"; //sobraba el punto
+                $sql = "UPDATE juegos SET ". implode(" , ", $consulta) . " WHERE id=?"; //sobraba el punto 
                 
                 $param[] = $id;
                 $consulta = $db->prepare($sql);
@@ -527,24 +537,25 @@ $app->put('/juegos/{id}', function(Request $request, Response $response){
                 $db = null;
                 $json = array('mensaje' => 'Se actualizo un juego', 'exito' => true);
                 $response->getBody()->write(json_encode($json));
-                return $response->withStatus(200);
+                return $response->withHeader("content-type", "application/json")->withStatus(200);
             } else {
                 $db = null;
                 $json = array('mensaje' => 'No se pudo actualizar el juego con id: ' . $id, 'exito: ' => $res['exito'], 'errores: ' => $res['errores']);
                 $response->getBody()->write(json_encode($json));
-                return $response->withStatus(400);
+                return $response->withHeader("content-type", "application/json")->withStatus(400);
             }
             
         } else {
             $db = null;
             $json = array('mensaje' => 'No hay un juego con el id: ' . $id, 'exito' => false);
             $response->getBody()->write(json_encode($json));
-            return $response->withStatus(400);
+            return $response->withHeader("content-type", "application/json")->withStatus(400);
         }
     } catch (\PDOException $e){
         $db = null;
-        $response->getBody()->write($e->getMessage());
-        return $response->withStatus(400); 
+        $respuesta= array('mensaje' => $e->getMessage(), 'exito' => false);
+        $response->getBody()->write(json_encode($respuesta));
+        return $response->withHeader("content-type", "application/json")->withStatus(400);
     }
 });
 
@@ -565,22 +576,22 @@ $app->delete('/juegos/{id}', function(Request $request, Response $response){
             $cons->execute();
 
 
-            $db = null;
+            $db = null; //leer
             $json = array('mensaje' => 'Se elimino el juego con id: ' . $id, 'exito: ' => true);
             $response->getBody()->write(json_encode($json));
-            return $response->withStatus(200);
+            return $response->withHeader("content-type", "application/json")->withStatus(200);
         } else {
 
             $db = null;
             $json = array('mensaje' => 'No se encontro el juego con id: ' . $id, 'exito: ' => false);
             $response->getBody()->write(json_encode($json));
-            return $response->withStatus(400);
+            return $response->withHeader("content-type", "application/json")->withStatus(400);
         }
     } catch (\PDOException $err){
         $db = null;
         $respuesta= array('mensaje' => $e->getMessage(), 'exito' => false);
         $response->getBody()->write(json_encode($respuesta));
-        return $response->withStatus(400);
+        return $response->withHeader("content-type", "application/json")->withStatus(400);
     }
 });
 
@@ -637,6 +648,7 @@ $app->get('/juegos', function (Request $request, Response $response) use ($app){
         }
 
         $consulta = $db->prepare($sql);
+        var_dump($setParam); die;
         $consulta->execute($setParam);
         $juegos = $consulta->fetchAll(\PDO::FETCH_OBJ);
         //$datos = $consulta->fetchAll(); es lo mismo pero va pdo
@@ -645,12 +657,12 @@ $app->get('/juegos', function (Request $request, Response $response) use ($app){
 
         $json = array('mensaje' => 'Juegos que coinciden con la busqueda', 'exito' => true, 'juegos' => $juegos);
         $response->getBody()->write(json_encode($json));
-        return $response->withStatus(200);
+        return $response->withHeader("content-type", "application/json")->withStatus(200);
 
     } catch (\PDOException $e){
         $respuesta= array('mensaje' => $e->getMessage(), 'exito' => false);
         $response->getBody()->write(json_encode($respuesta));
-        return $response->withStatus(400);
+        return $response->withHeader("content-type", "application/json")->withStatus(400);
     }
 });
 
